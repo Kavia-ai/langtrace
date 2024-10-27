@@ -28,6 +28,11 @@ const projectTypes = [
     comingSoon: false,
   },
   {
+    value: "kavia",
+    label: "kaviaAI",
+    comingSoon: false,
+  },
+  {
     value: "dspy",
     label: "DSPy",
     comingSoon: false,

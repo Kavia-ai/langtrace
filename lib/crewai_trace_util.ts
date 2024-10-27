@@ -1,3 +1,4 @@
+import { Span } from "next/dist/trace";
 import {
   calculateTotalTime,
   convertTracesToHierarchy,
@@ -35,6 +36,8 @@ export interface CrewAITrace {
   sorted_trace: any[];
   trace_hierarchy: any[];
   raw_attributes: any;
+  tools_capture: any[];
+  tools_output: any[];
 }
 
 export interface CrewAICrew {
@@ -91,6 +94,20 @@ export interface CrewAITask {
 export interface CrewAITool {
   name: string;
   description: string;
+  parameter:string;
+}
+
+export interface KaviaAIToolCapture {
+  name: string;
+  arguments: string;
+  id:string;
+  type:string;
+}
+
+export interface KaviaAIToolOutput {
+  name: string;
+  description: string;
+  parameter:string;
 }
 
 export interface CrewAIMemory {
@@ -103,6 +120,34 @@ export interface VendorMetadata {
 }
 
 export function processCrewAITrace(trace: any): CrewAITrace {
+  let tool_output:any[] = []
+  let tool_capture:any[] = []
+  
+  trace.forEach((element: any) => {
+    
+    if(element.name == 'openai.chat.completions.create'){
+      let data = JSON.parse(element.events)
+      let conversation = JSON.parse(data[0].attributes['gen_ai.prompt'])
+
+      conversation.forEach((item: any) => {
+        
+        if(item[0] !== undefined){
+            item.forEach((i: any) => {
+              tool_capture.push(i)
+            })
+        }
+        
+        if(item['role'] == 'tool'){
+            tool_output.push(item)
+          }
+
+
+      })
+    }
+  });
+
+  // console.log("Captured tools ", tool_output)
+
   const traceHierarchy = convertTracesToHierarchy(trace);
   const totalTime = calculateTotalTime(trace);
   const startTime = trace[0].start_time;
@@ -121,6 +166,7 @@ export function processCrewAITrace(trace: any): CrewAITrace {
   let agents: CrewAIAgent[] = [];
   let tasks: CrewAITask[] = [];
   let crewTools: CrewAITool[] = [];
+
   const memory: CrewAIMemory[] = [];
   // set status to ERROR if any span has an error
   let status = "success";
@@ -192,61 +238,105 @@ export function processCrewAITrace(trace: any): CrewAITrace {
           verbose: attributes["crewai.agent.verbose"] || false,
         };
 
-        let tools = attributes["crewai.agent.tools"];
+        let tools = attributes["gen_ai.request.tools"];
         try {
           tools = JSON.parse(tools);
+
+          // Parse the inner JSON structure
+          tools = tools.map((toolString: string) => JSON.parse(toolString));
         } catch (e) {
           tools = [];
         }
+
         if (tools.length > 0) {
-          agent.tools = tools.map((tool: any) => {
-            return {
-              name: tool.name,
-              description: tool.description,
-            } as CrewAITool;
+          crewTools = tools.flatMap((toolArray: any[]) => {
+            // Use flatMap to handle all elements in each array
+            return toolArray.map((tool: any) => {
+              // Iterate over each tool in the toolArray
+              // console.log(tool); // Log each tool to check its structure
+              return {
+                name: tool.function?.name || "Unknown Tool", // Access the function property of each tool
+                description:
+                  tool.function?.description || "No description available",
+              } as CrewAITool;
+            });
           });
-          crewTools = [...(agent.tools as CrewAITool[])];
         }
 
         agents.push(agent);
       }
 
-      // get the tasks
-      if (attributes["crewai.task.id"]) {
-        const task: CrewAITask = {
-          id: attributes["crewai.task.id"] || "",
-          description: attributes["crewai.task.description"] || "",
-          human_input: attributes["crewai.task.human_input"] || "",
-          expected_output: attributes["crewai.task.expected_output"] || "",
-          result: attributes["crewai.task.result"] || "",
-          agent: attributes["crewai.task.agent"] || "",
-          async_execution: attributes["crewai.task.async_execution"] || false,
-          delegations: attributes["crewai.task.delegations"] || 0,
-          used_tools: attributes["crewai.task.used_tools"] || 0,
-          tool_errors: attributes["crewai.task.tool_errors"] || 0,
-        };
-        let tools = attributes["crewai.task.tools"];
-        try {
-          tools = JSON.parse(tools);
-        } catch (e) {
-          tools = [];
-        }
-        if (tools.length > 0) {
-          task.tools = tools.map((tool: any) => {
-            return {
-              name: tool.name,
-              description: tool.description,
-            };
-          });
-        }
+      let tools = attributes["gen_ai.request.tools"];
+      try {
+        tools = JSON.parse(tools);
 
-        tasks.push(task);
+        // Parse the inner JSON structure
+        tools = tools.map((toolString: string) => JSON.parse(toolString));
+
+        if (tools.length > 0) {
+          // crewTools = tools.map((tool: any) => {
+          //   console.log(tool.name);
+          //   return {
+          //     name: tool.function?.name || "Unknown Tool",
+          //     description: tool.function?.description || "No description available",
+          //   } as CrewAITool;
+          // });
+
+          if (tools.length > 0) {
+            crewTools = tools.flatMap((toolArray: any[]) => {
+              // Use flatMap to handle all elements in each array
+              return toolArray.map((tool: any) => {
+                // Iterate over each tool in the toolArray
+                // console.log(tool); // Log each tool to check its structure
+                return {
+                  name: tool.function?.name || "Unknown Tool", // Access the function property of each tool
+                  description: tool.function?.description || "No description available",
+                  parameter : tool.function?.parameters || "No description available"
+                } as CrewAITool;
+              });
+            });
+          }
+        }
+      } catch (e) {
+        tools = [];
       }
+
+      // get the tasks
+      // if (attributes["crewai.task.id"]) {
+      const task: CrewAITask = {
+        id: attributes["crewai.task.id"] || "",
+        description: attributes["crewai.task.description"] || "",
+        human_input: attributes["crewai.task.human_input"] || "",
+        expected_output: attributes["crewai.task.expected_output"] || "",
+        result: attributes["crewai.task.result"] || "",
+        agent: attributes["crewai.task.agent"] || "",
+        async_execution: attributes["crewai.task.async_execution"] || false,
+        delegations: attributes["crewai.task.delegations"] || 0,
+        used_tools: attributes["crewai.task.used_tools"] || 0,
+        tool_errors: attributes["crewai.task.tool_errors"] || 0,
+      };
+      try {
+        tools = JSON.parse(tools);
+      } catch (e) {
+        tools = [];
+      }
+      if (tools.length > 0) {
+        task.tools = tools.map((tool: any) => {
+          return {
+            name: tool.name,
+            description: tool.description,
+          };
+        });
+      }
+
+      tasks.push(task);
+      // }
 
       if (attributes["crewai.memory.storage.rag_storage.inputs"]) {
         const memo: CrewAIMemory = {
           inputs: attributes["crewai.memory.storage.rag_storage.inputs"],
-          outputs: attributes["crewai.memory.storage.rag_storage.outputs"] || "",
+          outputs:
+            attributes["crewai.memory.storage.rag_storage.outputs"] || "",
         };
         memo.inputs = memo.inputs.replace(/\\n/g, "\n");
         memo.outputs = memo.outputs.replace(/\\n/g, "\n");
@@ -388,6 +478,7 @@ export function processCrewAITrace(trace: any): CrewAITrace {
       const events = JSON.parse(span.events);
       const inputs = [];
       const outputs = [];
+
       allEvents.push(events);
 
       // find event with name 'gen_ai.content.prompt'
@@ -472,6 +563,8 @@ export function processCrewAITrace(trace: any): CrewAITrace {
     sorted_trace: trace,
     trace_hierarchy: traceHierarchy,
     raw_attributes: attributes,
+    tools_capture: tool_capture,
+    tools_output: tool_output,
   };
 
   return result;

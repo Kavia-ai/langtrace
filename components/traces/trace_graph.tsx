@@ -412,6 +412,7 @@ export function AttributesTabs({
   const vendor = getVendorFromSpan(span);
 
   const { theme } = useTheme();
+  
   return (
     <Tabs defaultValue={span.status_code === "ERROR" ? "events" : "attributes"}>
       <TabsList className="grid w-full grid-cols-2 sticky top-0 z-50">
@@ -429,13 +430,13 @@ export function AttributesTabs({
             const value = attributes[key].toString();
             let jsonValue = value;
             try {
-              jsonValue = JSON.parse(value);
+              jsonValue = JSON.parse(value); // Try parsing the value to check if it's JSON
             } catch (e) {
-              jsonValue = value;
+              jsonValue = value; // Keep as plain string if parsing fails
             }
             return (
               <div key={i} className="flex flex-col gap-2">
-                <div className="grid grid-cols-2 mt-2 items-start">
+                <div className="grid grid-cols-[1fr_3fr] mt-2 items-start">
                   <p className="font-semibold text-xs rounded-md p-1 bg-muted w-fit">
                     {key}
                   </p>
@@ -452,27 +453,31 @@ export function AttributesTabs({
       <TabsContent value="events">
         {events.length > 0 ? (
           events.map((event: any, key: number) => (
-            <JSONTree
-              shouldExpandNodeInitially={() => true}
-              key={key}
-              data={event}
-              theme={jsontheme}
-              invertTheme={theme === "light"}
-              labelRenderer={([key]) => <strong>{key}</strong>}
-              valueRenderer={(raw: any) => (
-                <span className="overflow-x-hidden">{raw}</span>
-              )}
-              postprocessValue={(raw: any) => {
-                if (typeof raw === "string") {
-                  try {
-                    return JSON.parse(raw);
-                  } catch (e) {
-                    return raw;
+            <div className="overflow-x-auto max-w-full">
+               <JSONTree
+                shouldExpandNodeInitially={() => true}
+                key={key}
+                data={event}
+                theme={jsontheme}
+                invertTheme={theme === "light"}
+                labelRenderer={([key]) => <strong>{key}</strong>}
+                valueRenderer={(raw: any) => (
+                  <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                    {raw}
+                  </span>
+                )}
+                postprocessValue={(raw: any) => {
+                  if (typeof raw === "string") {
+                    try {
+                      return JSON.parse(raw);
+                    } catch (e) {
+                      return raw;
+                    }
                   }
-                }
-                return raw;
+                  return raw;
               }}
             />
+          </div>
           ))
         ) : (
           <p className="text-sm text-muted-foreground">No events found.</p>

@@ -55,6 +55,13 @@ const ProjectNavLinks = (id: string, type = "default") => {
       href: `/project/${id}/crewai-dash`,
     });
   }
+  if (type == "kavia") {
+    // add to the second position
+    result.splice(1, 0, {
+      name: "KaviaAI Dash",
+      href: `/project/${id}/kavia-dash`,
+    });
+  }
   if (type == "dspy") {
     // add to the second position
     result.splice(1, 0, {
@@ -125,12 +132,29 @@ export default function Nav({}: {}) {
   }
 
   return (
+    // <nav className="flex items-end gap-4">
+    //   {navlinks.map((link, i) => (
+    //     <Link key={i} href={link.href}>
+    //       <Button
+    //         className={cn(
+    //           pathname.includes(link.name.toLowerCase().replace(" ", "-"))
+    //             ? "text-primary border-b border-primary rounded-b-none"
+    //             : "text-muted-foreground",
+    //           "hover:text-primary"
+    //         )}
+    //         variant="ghost"
+    //       >
+    //         {link.name}
+    //       </Button>
+    //     </Link>
+    //   ))}
+    // </nav>
     <nav className="flex items-end gap-4">
       {navlinks.map((link, i) => (
         <Link key={i} href={link.href}>
           <Button
             className={cn(
-              pathname.includes(link.name.toLowerCase().replace(" ", "-"))
+              pathname === link.href
                 ? "text-primary border-b border-primary rounded-b-none"
                 : "text-muted-foreground",
               "hover:text-primary"
@@ -142,5 +166,6 @@ export default function Nav({}: {}) {
         </Link>
       ))}
     </nav>
+
   );
 }
