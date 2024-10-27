@@ -13,8 +13,9 @@ WORKDIR /app
 RUN apt update && apt install postgresql-client -y
 
 COPY . .
-
+RUN npm install -g npm@10.9.0
 RUN npm install
+RUN npm run build
 
 EXPOSE 3000
 
