@@ -68,27 +68,27 @@ export default function Annotations({ email }: { email: string }) {
       const filters = {
         filters: [
           {
+            key: "name",
+            operation: "EQUALS",
+            value: "gen_ai.content.completion",
+            type: "event",
+          },
+          {
             operation: "OR",
             filters: [
               {
-                key: "llm.prompts",
-                operation: "NOT_EQUALS",
-                value: "",
-                type: "attribute",
+                key: "status_code",
+                operation: "EQUALS",
+                value: "STATUS_CODE_OK",
+                type: "property",
               },
               {
-                key: "name",
+                key: "status_code",
                 operation: "EQUALS",
-                value: "gen_ai.content.completion",
-                type: "event",
+                value: "1",
+                type: "property",
               },
             ],
-          },
-          {
-            key: "status_code",
-            operation: "EQUALS",
-            value: "OK",
-            type: "property",
           },
         ],
         operation: "AND",
