@@ -205,7 +205,6 @@ export function convertToDateTime64(dateTime: [number, number]): string {
 }
 
 function determineStatusCode(inputData: any): SpanStatusCode {
-  if (!inputData) return "UNSET";
 
   // Check if inputData is a number
   if (typeof inputData === "number") {
@@ -220,7 +219,7 @@ function determineStatusCode(inputData: any): SpanStatusCode {
 
   // Existing logic if inputData is not a number
   const code = inputData.status?.code;
-  const statusCode = inputData.status?.status_code;
+  const statusCode = inputData.status?.status_code || inputData.status?.code;
   if (statusCode) return statusCode;
 
   if (code === 0) return "UNSET";
@@ -335,12 +334,12 @@ export function normalizeOTELData(inputData: any[]): Normalized[] {
         span_id: inputData.spanId,
         trace_state: "",
         kind: inputData.kind as string,
-        parent_id: "",
+        parent_id: inputData.parentSpanId,
         start_time: start,
         end_time: end,
         duration: durationBetweenDateTimeStrings(start, end),
         attributes: JSON.parse(attributes as any),
-        status_code: determineStatusCode(inputData?.status?.code),
+        status_code: determineStatusCode(inputData),
         events: events,
         links: inputData.links,
       };
@@ -577,6 +576,10 @@ export function calculatePriceFromUsage(
       costTable = ANTHROPIC_PRICING[cmodel];
     } else if (model.includes("command")) {
       costTable = COHERE_PRICING[model];
+    } else if (model.includes("gemini")) {
+      costTable = GEMINI_PRICING[model];
+    } else if (model.includes("grok")) {
+      costTable = XAI_PRICING[model];
     }
   } else if (vendor === "openai") {
     // check if model is present as key in OPENAI_PRICING
@@ -828,6 +831,12 @@ export function getVendorFromSpan(span: Span): string {
     vendor = "embedchain";
   } else if (span.name.includes("litellm") || serviceName.includes("litellm")) {
     vendor = "litellm";
+  } else if (span.name.includes("mongodb") || serviceName.includes("mongodb")) {
+    vendor = "mongodb";
+  } else if (span.name.includes("guard") || serviceName.includes("guard")) {
+    vendor = "guardrails";
+  }  else if (span.name.includes("mistral") || serviceName.includes("mistral")) {
+    vendor = "mistral";
   }
   return vendor;
 }
