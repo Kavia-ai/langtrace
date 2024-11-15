@@ -8,6 +8,7 @@ import { calculatePriceFromUsage, formatDateTime } from "./utils";
 
 export interface CrewAITrace {
   id: string;
+  session_id: string;
   status: string;
   crew: CrewAICrew;
   agents: CrewAIAgent[];
@@ -151,6 +152,7 @@ export function processCrewAITrace(trace: any): CrewAITrace {
   const traceHierarchy = convertTracesToHierarchy(trace);
   const totalTime = calculateTotalTime(trace);
   const startTime = trace[0].start_time;
+  let session_id = "";
   let tokenCounts: any = {};
   let models: string[] = [];
   let vendors: string[] = [];
@@ -192,6 +194,11 @@ export function processCrewAITrace(trace: any): CrewAITrace {
           vendors.push(vendor);
           libraries.push({ name: vendor, version: vendorVersion });
         }
+      }
+
+      // get the session_id from the attributes
+      if (attributes["session.id"]) {
+        session_id = attributes["session.id"];
       }
 
       // get the crew
@@ -532,6 +539,7 @@ export function processCrewAITrace(trace: any): CrewAITrace {
   // construct the response object
   const result: CrewAITrace = {
     id: trace[0]?.trace_id,
+    session_id: session_id,
     status: status,
     namespace: traceHierarchy[0].name,
     crew: crew,
