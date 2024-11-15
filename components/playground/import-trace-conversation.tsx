@@ -162,6 +162,63 @@ export default function ImportTraceConversation({
     }
   };
 
+  // const handleRowClick = async (promptFinal: string, responseFinal: string) => {
+  //   try {
+  //     const response = await fetch(`http://localhost:3000/api/trace?projectId=cm2m13vxo000j105v6sv5nnk4&traces=0xe4b58d56528b595337c699acf7262c23&spanId=0xc20e5db37444f917`, {
+  //       method: 'GET',
+  //       headers: {
+  //         'Accept': '*/*',
+  //         'Content-Type': 'application/json',
+  //       }
+  //     });
+      
+      
+  //     if (!response.ok) {
+  //       throw new Error('Failed to fetch trace data');
+  //     }
+  
+  //     const data = await response.json();
+      
+  //     // Parse events from the response
+  //     const data_original = JSON.parse(data);
+  //     const events = JSON.parse(data_original.events);
+
+  //     console.log(events);
+
+  //     // // Find prompt and completion events
+  //     const promptEvent = events.find((event: any) => event.name === "gen_ai.content.prompt");
+  //     const promptContent = promptEvent?.attributes?.["gen_ai.prompt"];
+  
+  //     if (promptContent) {
+  //       try {
+  //         const parsedPromptContent = JSON.parse(promptContent);
+  //         // Find the user message in the conversation
+  //         const userMessage = parsedPromptContent.find((msg: any) => msg.role === "user");
+  //         const systemMessage = parsedPromptContent.find((msg: any) => msg.role === "system");
+
+  //         if (userMessage) {
+  //           const messages = [];
+  //           if (systemMessage) {
+  //             messages.push({ role: "system", content: systemMessage.content });
+  //           }
+  //           messages.push({ role: "user", content: userMessage.content });
+            
+  //           setMessages(messages);
+  //           setOpenDialog(false);
+  //         }
+  //       } catch (parseError) {
+  //         console.error('Error parsing prompt content:', parseError);
+  //         toast.error('Failed to parse conversation data');
+  //   }
+  //     } else {
+  //       toast.error('No valid conversation found in the trace');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error fetching trace:', error);
+  //     toast.error('Failed to fetch trace data');
+  //   }
+  // };
+
   return (
     <Dialog
       open={openDialog}

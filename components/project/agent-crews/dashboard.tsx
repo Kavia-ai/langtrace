@@ -387,7 +387,7 @@ export default function AgentCrewsDashboard({ email }: { email: string }) {
               </CardContent>
             </Card>
           </div>
-          <TraceComponent trace={selectedTrace} />
+          <TraceComponent trace={selectedTrace} all_trace={currentData}/>
         </>
       )}
     </div>

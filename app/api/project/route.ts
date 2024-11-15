@@ -6,6 +6,7 @@ import { authApiKey } from "@/lib/utils";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto"; // Import crypto for hashing
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -44,8 +45,25 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const authenticationkey = req.headers.get("authkey");
   const apiKey = req.headers.get("x-api-key");
-  if (!apiKey) {
+
+  // Check admin password first
+  if (authenticationkey) {
+
+    const adminPassword = "langtraceadminpw";
+    const hashedAdminPassword = crypto.createHash("md5").update(adminPassword).digest("hex");
+
+
+    if (authenticationkey !== hashedAdminPassword) {
+      return NextResponse.json(
+        { error: "Unauthorized. Invalid admin password" },
+        { status: 401 }
+      );
+    }
+  } 
+  // If no admin password, proceed with regular auth
+  else if (!apiKey) {
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
       redirect("/login");
@@ -56,6 +74,7 @@ export async function POST(req: NextRequest) {
       return response;
     }
   }
+
   const data = await req.json();
   const { name, description, teamId, type } = data;
   let createDefaultTests = data.createDefaultTests;
@@ -76,6 +95,7 @@ export async function POST(req: NextRequest) {
       type: projectType,
     },
   });
+
 
   if (createDefaultTests) {
     // create default tests

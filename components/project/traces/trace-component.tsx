@@ -13,23 +13,72 @@ import { cn, getVendorFromSpan } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, CodeIcon, MessageCircle, NetworkIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
-export function TraceComponent({ trace }: { trace: CrewAITrace }) {
+export function TraceComponent({ trace , all_trace}: { trace: CrewAITrace , all_trace: CrewAITrace[];}) {
   const [selectedTrace, setSelectedTrace] = useState<any[]>(trace.trace_hierarchy);
+  // const [allcurrentTrace, setallcurrentTrace] = useState<any[]>(
+  //   all_trace.map((trace) => trace.trace_hierarchy).flat()
+  // );
+  const [allcurrentTrace, setAllCurrentTrace] = useState<any[]>([]);
+
+  // const [selectedVendors, setSelectedVendors] = useState<string[]>(trace.vendors );
   const [selectedVendors, setSelectedVendors] = useState<string[]>(trace.vendors);
+
   const [includesLanggraph, setIncludesLanggraph] = useState<boolean>(false);
   const [spansView, setSpansView] = useState<"SPANS" | "ATTRIBUTES" | "CONVERSATION" | "LANGGRAPH">("SPANS");
   const [span, setSpan] = useState<any | null>(null);
   const [attributes, setAttributes] = useState<any | null>(null);
   const [events, setEvents] = useState<any | null>(null);
 
+
+  const gotoplayground = () => {
+    const urlPath = window.location.pathname;
+    const pathSegments = urlPath.split('/');
+    
+    // Extract the project ID from the URL (3rd segment)
+    const projectId = pathSegments[2];
+    
+    // Extract trace_id and span_id from the first trace in trace_hierarchy
+    const traceId = trace.trace_hierarchy[0]?.trace_id;
+    const spanId = trace.trace_hierarchy[0]?.span_id;
+    
+    // Construct the new URL with the query parameters
+    const playgroundUrl = `/project/${projectId}/playground?projectId=${projectId}&traces=${traceId}&spanId=${spanId}`;
+    
+    // Navigate to the playground URL
+    window.location.href = playgroundUrl;
+  };
  
   useEffect(() => {
     setSelectedTrace(trace.trace_hierarchy);
     setSelectedVendors(trace.vendors);
+    console.log(selectedVendors);
     if (trace.vendors.includes("langgraph")) setIncludesLanggraph(true);
+    setAllCurrentTrace(combineTraces(all_trace)); // Use the combine function to set allcurrentTrace
     if (!open) setSpansView("SPANS");
   }, [trace, open]);
 
+
+  const combineTraces = (traces: CrewAITrace[]): any[] => {
+    const flattenedTraces = traces.map((trace) => trace.trace_hierarchy).flat();
+    const combined: any[] = [];
+
+    for (let i = 0; i < flattenedTraces.length; i++) {
+      const currentTrace = flattenedTraces[i];
+
+      // If it's the first trace or the name is different from the last one, add it to combined
+      if (i === 0 || currentTrace.name !== flattenedTraces[i - 1].name) {
+        combined.push({ ...currentTrace, children: [...(currentTrace.children || [])] });
+      } else {
+        // If the name is the same as the last one, accumulate children
+        const lastCombinedTrace = combined[combined.length - 1];
+        lastCombinedTrace.children.push(...(currentTrace.children || []));
+      }
+    }
+
+    return combined;
+  };
+
+  
   return (
     <div className="flex md:flex-row flex-col items-stretch w-full">
       <div
@@ -42,6 +91,7 @@ export function TraceComponent({ trace }: { trace: CrewAITrace }) {
         <div>
           <SpansView
             trace={trace}
+            allcurrentTrace={allcurrentTrace}
             selectedTrace={selectedTrace}
             setSelectedTrace={setSelectedTrace}
             selectedVendors={selectedVendors}
@@ -71,6 +121,15 @@ export function TraceComponent({ trace }: { trace: CrewAITrace }) {
               >
                 <ChevronRight size={16} className="mr-2" />
               </Button> */}
+              <Button
+                className="w-fit bg-secondary hover:bg-secondary/80 text-secondary-foreground"
+                size={"sm"}
+                variant={"secondary"}  // Changed from "outline" to "secondary"
+                onClick={gotoplayground}  // Attach the gotoplayground function
+              >
+                Go to Playground
+              </Button>
+
               <Button
                 className="w-fit"
                 size={"sm"}
@@ -119,6 +178,7 @@ export function TraceComponent({ trace }: { trace: CrewAITrace }) {
 function SpansView({
   trace,
   selectedTrace,
+  allcurrentTrace,
   setSelectedTrace,
   selectedVendors,
   setSelectedVendors,
@@ -129,6 +189,7 @@ function SpansView({
 }: {
   trace: Trace;
   selectedTrace: any[];
+  allcurrentTrace: any[];
   setSelectedTrace: (trace: any[]) => void;
   selectedVendors: string[];
   setSelectedVendors: (vendors: string[]) => void;
@@ -137,6 +198,8 @@ function SpansView({
   setAttributes: (attributes: any) => void;
   setEvents: (events: any) => void;
 }) {
+  const [isGroupView, setIsGroupView] = useState<boolean>(false);
+
   return (
     <>
       <div className="flex flex-col gap-3 pb-3">
@@ -148,37 +211,56 @@ function SpansView({
             Tip 2: Click on attributes or events to copy them to your clipboard.
           </li>
         </ul>
+
         <div className="flex gap-2 items-center flex-wrap">
-          {trace.vendors.map((vendor, i) => (
+        {["Group View", ...trace.vendors].map((vendor, i) => (
             <div className="flex items-center space-x-2 py-3" key={i}>
               <Checkbox
                 id={vendor}
-                checked={selectedVendors.includes(vendor)}
+                checked={vendor === "Group View" ? isGroupView : selectedVendors.includes(vendor)}
                 onCheckedChange={(checked) => {
-                  if (checked) {
-                    if (!selectedVendors.includes(vendor)) setSelectedVendors([...selectedVendors, vendor]);
+                  if (vendor === "Group View") {
+                    // Use type assertion or checks here to ensure correct handling of CheckedState
+                    const isChecked = checked === true; // Handle the boolean state directly
+                    setIsGroupView(isChecked); // Update the Group View state
+
+                    if (isChecked) {
+                      setSelectedTrace(allcurrentTrace); // Show all traces when checked
+                    } else {
+                      // Show selected traces when unchecked
+                      const updatedVendors = checked
+                      ? [...selectedVendors, vendor]
+                      : selectedVendors.filter((v) => v !== vendor);
+                    setSelectedVendors(updatedVendors);
+
+                    // Filter traces based on selected vendors
+                    const filteredTraces = trace.sorted_trace.filter((span) =>
+                      updatedVendors.includes(getVendorFromSpan(span))
+                    );
+
+                    setSelectedTrace(
+                      updatedVendors.length === trace.vendors.length
+                        ? trace.trace_hierarchy
+                        : convertTracesToHierarchy(filteredTraces)
+                    );
+                    }
                   } else {
-                    setSelectedVendors(selectedVendors.filter((v) => v !== vendor));
-                  }
-                  const traces = [];
-                  const currVendors = [...selectedVendors];
-                  if (checked) currVendors.push(vendor);
-                  else currVendors.splice(currVendors.indexOf(vendor), 1);
+                    const updatedVendors = checked
+                      ? [...selectedVendors, vendor]
+                      : selectedVendors.filter((v) => v !== vendor);
+                    setSelectedVendors(updatedVendors);
 
-                  if (currVendors.length === trace.vendors.length) {
-                    setSelectedTrace(trace.trace_hierarchy);
-                    return;
-                  }
+                    // Filter traces based on selected vendors
+                    const filteredTraces = trace.sorted_trace.filter((span) =>
+                      updatedVendors.includes(getVendorFromSpan(span))
+                    );
 
-                  if (currVendors.length === 0) {
-                    setSelectedTrace([]);
-                    return;
+                    setSelectedTrace(
+                      updatedVendors.length === trace.vendors.length
+                        ? trace.trace_hierarchy
+                        : convertTracesToHierarchy(filteredTraces)
+                    );
                   }
-
-                  for (let i = 0; i < trace.sorted_trace.length; i++) {
-                    if (currVendors.includes(getVendorFromSpan(trace.sorted_trace[i]))) traces.push({ ...trace.sorted_trace[i] });
-                  }
-                  setSelectedTrace(convertTracesToHierarchy(traces));
                 }}
               />
               <label htmlFor={vendor} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
@@ -191,6 +273,7 @@ function SpansView({
       <div className="overflow-x-scroll pb-12">
         <TraceGraph
           spans={selectedTrace}
+          allspans={allcurrentTrace}
           totalSpans={trace.sorted_trace.length}
           totalTime={calculateTotalTime(trace.sorted_trace)}
           startTime={trace.start_time.toString()}

@@ -5,7 +5,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Langtrace | Agent Crews",
+  title: "Langtrace | Kavia",
   description: "View all the agent crews from CrewAI.",
 };
 

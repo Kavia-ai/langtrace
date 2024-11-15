@@ -58,6 +58,27 @@ export default function LLMChat({
   const [cost, setCost] = useState("");
   const [latency, setLatency] = useState("");
   const [initialPrompt, setInitialPrompt] = useState("");
+  const [initialTraceId, setInitialTraceId] = useState(false);  // Start with false
+  const [traceParams, setTraceParams] = useState<{
+    traceId: string | null;
+    spanId: string | null;
+  }>({ traceId: null, spanId: null });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const traceId = searchParams.get('traces');
+      const spanId = searchParams.get('spanId');
+
+      if (traceId && spanId) {
+        setTraceParams({ traceId, spanId });
+        setInitialTraceId(true);
+      } else {
+        setInitialTraceId(false);
+      }
+    }
+  }, []); // Empty dependency array as we only want this to run once on mount
+
 
   const setMessages = (messages: any[]) => {
     setLocalLLM({
@@ -77,6 +98,92 @@ export default function LLMChat({
     if (typeof window === "undefined" || !vendor) return;
     const key = window.localStorage.getItem(vendor.value);
     setApiKey(key);
+
+    // Add this new code to fetch trace data if initialTraceId is provided
+  const fetchInitialTrace = async () => {
+    if (!initialTraceId) return;
+    const urlPath = window.location.pathname;
+    const pathSegments = urlPath.split('/');
+    
+    // Extract the project ID from the URL (3rd segment)
+    const projectId = pathSegments[2]; 
+
+    console.log(projectId);
+    
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/trace?projectId=${projectId}&traces=${traceParams.traceId}&spanId=${traceParams.spanId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Accept': '*/*',
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch trace data');
+      }
+
+      const data = await response.json();
+      const data_original = JSON.parse(data);
+      const events = JSON.parse(data_original.events);
+
+      // Find prompt and completion events
+      const promptEvent = events.find((event: any) => event.name === "gen_ai.content.prompt");
+      const promptContent = promptEvent?.attributes?.["gen_ai.prompt"];
+
+      if (promptContent) {
+        try {
+          const parsedPromptContent = JSON.parse(promptContent);
+          // Find the user message in the conversation
+          const userMessage = parsedPromptContent.find((msg: any) => msg.role === "user");
+          const systemMessage = parsedPromptContent.find((msg: any) => msg.role === "system");
+
+          if (userMessage) {
+            const messages = [];
+            if (systemMessage) {
+              messages.push({
+                id: uuidv4(),
+                role: systemMessage.role,
+                content: systemMessage.content
+              });
+            }
+            messages.push({
+              id: uuidv4(),
+              role: userMessage.role,
+              content: userMessage.content
+            });
+            
+            setLocalLLM({
+              ...localLLM,
+              settings: {
+                ...localLLM.settings,
+                messages: messages,
+              },
+            });
+            setLLM({
+              ...llm,
+              settings: {
+                ...llm.settings,
+                messages: messages,
+              },
+            });
+          }
+        } catch (parseError) {
+          console.error('Error parsing prompt content:', parseError);
+          toast.error('Failed to parse conversation data');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching trace:', error);
+      toast.error('Failed to fetch trace data');
+    }
+  };
+
+  fetchInitialTrace();
+
     if (initialPrompt !== "") {
       setLocalLLM({
         ...localLLM,
@@ -113,7 +220,7 @@ export default function LLMChat({
         },
       });
     }
-  }, [initialPrompt]);
+  }, [initialPrompt, initialTraceId]);
 
   return (
     <Card className="w-[530px] h-[600px] p-1 relative group/card">

@@ -28,6 +28,7 @@ interface Span {
 
 interface TraceGraphProps {
   spans: Span[];
+  allspans: Span[] ;
   totalTime: number;
   startTime: string;
   totalSpans: number;
@@ -125,7 +126,8 @@ const SpanItem: React.FC<SpanItemProps> = ({
   const fillColor = color.replace("bg-", "fill-");
 
   const vendor = getVendorFromSpan(span as any);
-
+  // console.log(span);
+  
   return (
     <div className="flex flex-col gap-1 w-full mt-2">
       <div className="flex items-center">
@@ -166,7 +168,7 @@ const SpanItem: React.FC<SpanItemProps> = ({
             }`}
           ></span>
         </div>
-        <HoverCard>
+        {/* <HoverCard>
           <HoverCardTrigger asChild>
             <div
               onClick={() => {
@@ -203,7 +205,7 @@ const SpanItem: React.FC<SpanItemProps> = ({
             attributes={attributes}
             events={events}
           />
-        </HoverCard>
+        </HoverCard> */}
       </div>
       {!isCollapsed &&
         span.children &&
@@ -226,6 +228,7 @@ const SpanItem: React.FC<SpanItemProps> = ({
 
 export const TraceGraph: React.FC<TraceGraphProps> = ({
   spans,
+  allspans,
   totalTime,
   startTime,
   totalSpans,
@@ -235,45 +238,88 @@ export const TraceGraph: React.FC<TraceGraphProps> = ({
   setEvents,
 }) => {
   // Divide the totalTime into 6 parts
+  // const step = totalTime / 5;
+  // console.log(allspans);
+  
+ 
+
+  // return (
+    // <div className="relative flex flex-col h-[80vh] py-8 overflow-y-scroll">
+    //   <div className="absolute top-3 left-3 flex flex-col">
+    //     <p className="text-sm font-semibold text-muted-foreground">
+    //       Span Graph
+    //     </p>
+    //     <p className="text-xs text-muted-foreground">{allspans.length} span(s)</p>
+    //   </div>
+    //   <div className="mt-3 grid grid-cols-6 gap-[166px] h-[100%] absolute ml-[500px] -z-10">
+    //     {[...Array(6)].map((_, i) => (
+    //       <div key={i} className="flex flex-col gap-1 items-center">
+    //         <p className="text-muted-foreground text-xs">
+    //           {(step * i).toFixed(2)}ms
+    //         </p>
+    //         <Separator orientation="vertical" />
+    //       </div>
+    //     ))}
+    //   </div>
+  //     <div className="flex flex-col gap-3 mt-12">
+  //       <SpanBars />
+  //     </div>
+  //   </div>
+  // );
   const step = totalTime / 5;
 
-  const SpanBars = () =>
-    spans.map((span, i) => (
-      <SpanItem
-        key={`${span.name}-${i}`}
-        span={span}
-        level={0}
-        totalTime={totalTime}
-        startTime={startTime}
-        setSpansView={setSpansView}
-        setSpan={setSpan}
-        setAttributes={setAttributes}
-        setEvents={setEvents}
-      />
-    ));
-
+  // const SpanBars = () =>
+  //   spans.map((span, i) => (
+  //     <SpanItem 
+  //       key={`${span.name}-${i}`}
+  //       span={span}
+  //       level={0}
+  //       totalTime={totalTime}
+  //       startTime={startTime}
+  //       setSpansView={setSpansView}
+  //       setSpan={setSpan}
+  //       setAttributes={setAttributes}
+  //       setEvents={setEvents}
+  //     />
+  //   ));
+    
   return (
     <div className="relative flex flex-col h-[80vh] py-8 overflow-y-scroll">
-      <div className="absolute top-3 left-3 flex flex-col">
-        <p className="text-sm font-semibold text-muted-foreground">
-          Span Graph
-        </p>
-        <p className="text-xs text-muted-foreground">{totalSpans} span(s)</p>
-      </div>
-      <div className="mt-3 grid grid-cols-6 gap-[166px] h-[100%] absolute ml-[500px] -z-10">
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="flex flex-col gap-1 items-center">
-            <p className="text-muted-foreground text-xs">
-              {(step * i).toFixed(2)}ms
-            </p>
-            <Separator orientation="vertical" />
-          </div>
+    <div className="absolute top-3 left-3 flex flex-col">
+      <p className="text-sm font-semibold text-muted-foreground">
+        Span Graph
+      </p>
+      <p className="text-xs text-muted-foreground">{spans.length} span(s)</p>
+    </div>
+    <div className="mt-3 grid grid-cols-6 gap-[166px] h-[100%] absolute ml-[500px] -z-10">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="flex flex-col gap-1 items-center">
+          <p className="text-muted-foreground text-xs">
+            {(step * i).toFixed(2)}ms
+          </p>
+          <Separator orientation="vertical" />
+        </div>
+      ))}
+    </div>
+    {/* <div className="flex flex-col gap-3 mt-12">
+      <SpanBars />
+    </div> */}
+    <div className="flex flex-col gap-3 mt-12">
+        {spans.map((span, i) => (
+          <SpanItem
+            key={i}
+            span={span}
+            level={0}
+            totalTime={totalTime}
+            startTime={startTime}
+            setSpansView={setSpansView}
+            setSpan={setSpan}
+            setAttributes={setAttributes}
+            setEvents={setEvents}
+          />
         ))}
       </div>
-      <div className="flex flex-col gap-3 mt-12">
-        <SpanBars />
-      </div>
-    </div>
+  </div>
   );
 };
 

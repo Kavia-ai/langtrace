@@ -4,17 +4,49 @@ import { generateApiKey, hashApiKey, authApiKey } from "@/lib/utils";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto"; // Add crypto import
+
 
 // for generating new API key
 export async function POST(req: NextRequest) {
-  const projectId = req.nextUrl.searchParams.get("project_id") as string;
-  const teamId = req.nextUrl.searchParams.get("team_id") as string;
-  // if user is generating an api key for their project through the api
-  const projectGenApiKey = req.headers.get("x-api-key");
-  if (projectGenApiKey !== null) {
+    const projectId = req.nextUrl.searchParams.get("project_id") as string;
+    const teamId = req.nextUrl.searchParams.get("team_id") as string;
+
+  // Add admin password validation
+    const authenticationkey = req.headers.get("authkey");
+    const projectGenApiKey = req.headers.get("x-api-key");
+
+    // Check admin password first
+    if (authenticationkey) {
+      const adminPassword = "langtraceadminpw"
+    
+    if (!adminPassword) {
+      return NextResponse.json(
+        { error: "Missing admin password in environment variables" },
+        { status: 500 }
+      );
+    }
+
+    const hashedAdminPassword = crypto.createHash("md5").update(adminPassword).digest("hex");
+
+
+    if (authenticationkey !== hashedAdminPassword) {
+      return NextResponse.json(
+        { error: "Unauthorized. Invalid admin password" },
+        { status: 401 }
+      );
+    }
+  } 
+  // If no admin password, check for API key
+  else if (projectGenApiKey) {
     const response = await authApiKey(projectGenApiKey, true);
     if (response.status !== 200) {
       return response;
+    }
+  } else {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      redirect("/login");
     }
   }
 

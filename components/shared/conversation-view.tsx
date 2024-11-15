@@ -46,9 +46,12 @@ export default function ConversationView({
     prompts = attributes["llm.prompts"];
     responses = attributes["llm.responses"];
   }
+  console.log(JSON.parse(prompts));
+
 
   if (!prompts && !responses) return <p className="text-md">No data found</p>;
-
+  console.log(prompts);
+  
   return (
     <div
       className={cn(
@@ -59,15 +62,40 @@ export default function ConversationView({
       {prompts?.length > 0 &&
         JSON.parse(prompts).map((prompt: any, i: number) => {
           const role = prompt?.role ? prompt?.role?.toLowerCase() : "User";
-          const content = prompt?.content
-            ? safeStringify(prompt?.content)
-            : prompt?.function_call
-              ? safeStringify(prompt?.function_call)
-              : prompt?.message?.content
-                ? safeStringify(prompt?.message?.content)
-                : prompt?.text
-                  ? safeStringify(prompt?.text)
-                  : "No input found";
+          // const content = prompt?.content
+          //   ? safeStringify(prompt?.content)
+          //   : prompt?.function_call
+          //     ? safeStringify(prompt?.function_call)
+          //     : prompt?.message?.content
+          //       ? safeStringify(prompt?.message?.content)
+          //       : prompt?.text
+          //         ? safeStringify(prompt?.text)
+          //         : "No input found";
+          
+          //         console.log(content);
+          const content =
+          safeStringify(
+            prompt?.content ||
+            (prompt[0].type === "function" && prompt[0]?.function?.arguments) || // Use arguments if content is not present
+            prompt?.message?.content ||
+            prompt?.text ||
+            "No input found"
+          );
+          let parsedContent;
+
+          try {
+            // Check if content is a JSON string (e.g., starts with '{' or '[')
+            if (typeof content === "string" && (content.startsWith("{") || content.startsWith("["))) {
+              parsedContent = JSON.parse(content);
+            } else {
+              parsedContent = content; // content is already parsed or not in JSON format
+            }
+            console.log(parsedContent);
+          } catch (error) {
+            console.error("Error parsing content:", error);
+            parsedContent = "Invalid JSON format in content";
+          }
+                    
           const vendor = getVendorFromSpan(span);
           return (
             <div key={i} className="flex flex-col gap-2">
@@ -130,6 +158,91 @@ export default function ConversationView({
         })}
     </div>
   );
+
+  // return (
+  //   <div
+  //     className={cn(
+  //       className,
+  //       "flex flex-col gap-8 overflow-y-scroll pr-6 max-h-screen"
+  //     )}
+  //   >
+  //     {prompts?.length > 0 &&
+  //       JSON.parse(prompts).map((prompt: any, i: number) => {
+          
+  //         const role = prompt?.role ? prompt?.role?.toLowerCase() : "User";
+  //         const content = safeStringify(
+  //           prompt?.content ||
+  //           prompt?.function_call ||
+  //           prompt?.message?.content ||
+  //           prompt?.text ||
+  //           "No input found"
+  //         );
+  
+  //         // Skip rendering if content is "No input found"
+  //         if (content === "No input found") return null;
+  
+  //         const vendor = getVendorFromSpan(span);
+  //         return (
+  //           <div key={i} className="flex flex-col gap-2">
+  //             <div className="flex gap-2 items-center">
+  //               {role === "user" ? (
+  //                 <UserLogo />
+  //               ) : (
+  //                 <VendorLogo variant="circular" vendor={vendor} />
+  //               )}
+  //               <p className="font-semibold text-md capitalize">{role}</p>
+  //               {/* {role === "system" && (
+  //                 <p className="font-semibold text-xs capitalize p-1 rounded-md bg-muted">
+  //                   Prompt
+  //                 </p>
+  //               )} */}
+  //             </div>
+  //             <div
+  //               className="text-sm bg-muted rounded-md px-2 py-4"
+  //               dangerouslySetInnerHTML={{
+  //                 __html: content,
+  //               }}
+  //             />
+  //           </div>
+  //         );
+  //       })}
+  //     {responses?.length > 0 &&
+  //       JSON.parse(responses).map((response: any, i: number) => {
+  //         const role = response?.role?.toLowerCase() || "Assistant";
+  //         const content = safeStringify(
+  //           response?.content ||
+  //           response?.function_call ||
+  //           response?.message?.content ||
+  //           response?.text ||
+  //           "No output found"
+  //         );
+  
+  //         // Skip rendering if content is "No output found"
+  //         if (content === "No output found") return null;
+  
+  //         const vendor = getVendorFromSpan(span);
+  //         return (
+  //           <div className="flex flex-col gap-2 whitespace-pre-wrap" key={i}>
+  //             <div className="flex gap-2 items-center">
+  //               {role === "user" ? (
+  //                 <UserLogo />
+  //               ) : (
+  //                 <VendorLogo variant="circular" vendor={vendor} />
+  //               )}
+  //               <p className="font-semibold text-md capitalize">{role}</p>
+  //             </div>
+  //             <div
+  //               className="text-sm bg-muted rounded-md px-2 py-4 break-all"
+  //               dangerouslySetInnerHTML={{
+  //                 __html: content,
+  //               }}
+  //             />
+  //           </div>
+  //         );
+  //       })}
+  //   </div>
+  // );
+  
 }
 
 interface Message {
@@ -152,6 +265,10 @@ export function Conversation({
       {messages.map((message, i) => {
         const role = message.role.toLowerCase();
         const content: any = message.content;
+  
+        // Skip rendering if content is empty
+        if (!content || content === "No input found") return null;
+  
         return (
           <div key={i} className="flex flex-col gap-2">
             <div className="flex gap-2 items-center">
@@ -174,5 +291,5 @@ export function Conversation({
         );
       })}
     </div>
-  );
+  );  
 }

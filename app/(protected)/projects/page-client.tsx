@@ -30,6 +30,8 @@ export default function PageClient({ email }: { email: string }) {
       const response = await fetch(`/api/projects?email=${email}`);
       if (!response.ok) {
         const error = await response.json();
+        const result = await response.json();
+        console.log('Updated projects after creation:', result); // This will log whenever projects are fetched/updated
         throw new Error(error?.message || "Failed to fetch projects");
       }
       const result = await response.json();
@@ -85,10 +87,36 @@ export default function PageClient({ email }: { email: string }) {
     );
   }
 
+  // Function to store langtrace data
+  const storeLangTrace = async (projectData: Project) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/langtrace/store_langtrace', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(projectData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to store langtrace data');
+      }
+
+      const result = await response.json();
+      console.log('Langtrace data stored successfully:', result);
+    } catch (error) {
+      console.error('Error storing langtrace data:', error);
+      toast.error('Failed to store langtrace data');
+    }
+  };
+
   // sort projects by created date
   projects?.projects?.sort((a: Project, b: Project) => {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
+
+
+  console.log('Projects data:', projects);
 
   return (
     <div className="w-full flex flex-col">

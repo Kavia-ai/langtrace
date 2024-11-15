@@ -163,3 +163,27 @@
     --chart-5: 340 75% 55%;
   }
 }
+/* Add to your global.css */
+
+/* Make all interactive elements consistently clickable */
+button,
+a,
+[role="button"],
+[type="button"],
+[type="submit"],
+[type="reset"],
+.clickable,
+[data-clickable],
+.interactive,
+input[type="checkbox"],
+input[type="radio"],
+select,
+.dropdown-toggle,
+.menu-item,
+.nav-link,
+.card-action,
+.icon-button,
+[aria-haspopup],
+[tabindex="0"] {
+  pointer-events: auto !important;
+}

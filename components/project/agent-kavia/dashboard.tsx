@@ -32,18 +32,19 @@ export default function AgentKaviaDashboard({ email }: { email: string }) {
   const [cachedCurrentPage, setCachedCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [currentData, setCurrentData] = useState<CrewAITrace[]>([]);
-  const [enableFetch, setEnableFetch] = useState(false);
+  const [enableFetch, setEnableFetch] = useState(true);
   const [selectedTrace, setSelectedTrace] = useState<CrewAITrace | null>(null);
   const [selectedTraceIndex, setSelectedTraceIndex] = useState<number>(0);
 
-  useEffect(() => {
-    setEnableFetch(true);
-    // Check if selectedTrace is not null and has raw_attributes
-    // if (selectedTrace && selectedTrace.raw_attributes) {
-    //     console.log("Raw Attributes:", selectedTrace.raw_attributes);
-    // }
-}, [selectedTrace]); // Add selectedTrace to the dependency array to log whenever it changes
+//   useEffect(() => {
+//     setEnableFetch(true);
+// }, [selectedTrace]); // Add selectedTrace to the dependency array to log whenever it changes
 
+useEffect(() => {
+  if (selectedTrace) {
+    console.log("Selected Trace:", selectedTrace);
+  }
+}, [selectedTrace]);
 
 useEffect(() => {
   localStorage.setItem("selectedTraceIndex", selectedTraceIndex.toString()); // Convert number to string for storage
@@ -72,22 +73,14 @@ useEffect(() => {
     }
   };
 
-  const fetchLatestTraces = () => {
-    if (fetchTraces.isRefetching) {
-      return;
-    }
-    setCachedCurrentPage(page);
-    setPage(1);
-    setEnableFetch(true);
-  };
-
   const fetchTracesCall = useCallback(
     async (pageNum: number) => {
+      if (!project_id) return; // Avoid running until project_id is ready
       const apiEndpoint = "/api/traces";
 
       const body = {
-        page: pageNum,
-        pageSize: PAGE_SIZE,
+        page: pageNum, // Use the provided pageNum
+        pageSize: 1000, // Assume PAGE_SIZE is defined somewhere
         projectId: project_id,
         filters: {
           filters: [
@@ -126,44 +119,20 @@ useEffect(() => {
       const newData = data?.traces?.result || [];
       const metadata = data?.traces?.metadata || {};
 
-      setTotalPages(parseInt(metadata?.total_pages) || 1);
-      if (parseInt(metadata?.page) <= parseInt(metadata?.total_pages)) {
-        setPage(parseInt(metadata?.page) + 1);
-      }
+      const transformedNewData = newData.map((trace: any) => processCrewAITrace(trace));
 
-      let transformedNewData: CrewAITrace[] = [];
-      transformedNewData = newData.map((trace: any) => {
-        return processCrewAITrace(trace);
-      });
-
-      if (page === 1 && currentData.length === 0) {
+      if (page === 1) {
+        // On the first page, replace currentData with newData
         setCurrentData(transformedNewData);
-        if (transformedNewData.length > 0)
-          // console.log(transformedNewData);
-      
-          setSelectedTrace(transformedNewData[0]);
-          setSelectedTraceIndex(0); // Reset to the first trace index
-
+        setSelectedTrace(transformedNewData[0] || null); // Set the first trace as selected if available
+        setSelectedTraceIndex(0); // Reset index to 0
       } else {
-        if (page === 1) {
-          // deduplicate transformedNewData with currentData
-          const currentDataIds = currentData.map((trace: any) => trace.id);
-          transformedNewData = transformedNewData.filter(
-            (trace: any) => !currentDataIds.includes(trace.id)
-          );
-          setCurrentData((prevData: any) => [
-            ...transformedNewData,
-            ...prevData,
-          ]);
-          setPage(cachedCurrentPage);
-        } else {
-          setCurrentData((prevData: any) => [
-            ...prevData,
-            ...transformedNewData,
-          ]);
-        }
+        // For subsequent pages, just set currentData with new data
+        setCurrentData(transformedNewData);
       }
 
+      // Update page state for next fetch
+      setPage((prevPage) => prevPage + 1);
       setEnableFetch(false);
     },
     onError: (error) => {
@@ -176,9 +145,15 @@ useEffect(() => {
     enabled: enableFetch,
   });
 
+  const fetchLatestTraces = () => {
+    setPage(1); // Reset to page 1 for latest traces
+    setEnableFetch(true); // Enable fetch
+  };
+
   if (fetchTraces.isLoading && currentData.length === 0) {
     return <PageLoading />;
   }
+
 
   return (
     <div className="w-full py-6 px-6 flex flex-col gap-3">
@@ -402,7 +377,7 @@ useEffect(() => {
             </Card>
         
           </div>
-          <TraceComponent trace={selectedTrace} />
+          <TraceComponent trace={selectedTrace} all_trace={currentData}/>
         </>
       )}
     </div>
