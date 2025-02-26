@@ -1,0 +1,14 @@
+name: langtrace
+id: ari:cloud:compass:5e94d758-a794-4b1d-8c6d-fc24ab811c25:component/eaa92134-53b3-4c85-a00a-1874d1736e0e/1efe5d3d-0021-4b17-be40-702cb04dcadd
+description: Langtrace 🔍 is an open-source,  Open Telemetry based end-to-end observability tool for LLM applications, providing real-time tracing, evaluations and metrics for popular LLMs, LLM frameworks, vectorDBs and more.. Integrate using Typescript, Python. 🚀💻📊
+configVersion: 1
+typeId: SERVICE
+fields:
+  tier: 4
+links: []
+relationships:
+  DEPENDS_ON: []
+labels:
+  - language:typescript
+  - source:github
+customFields: null
